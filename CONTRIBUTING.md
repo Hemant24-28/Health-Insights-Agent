@@ -20,10 +20,10 @@ Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md). We aim to fost
 
 ### Prerequisites
 
-- Python 3.8+
+- Python 3.11+
 - Streamlit 1.30.0+ 
 - Supabase account
-- Groq API key
+- Gemini API key
 - PDFPlumber
 - Python-magic-bin (Windows) or Python-magic (Linux/Mac)
 
@@ -45,11 +45,11 @@ Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md). We aim to fost
    ```toml
    SUPABASE_URL = "your-supabase-url"
    SUPABASE_KEY = "your-supabase-key"
-   GROQ_API_KEY = "your-groq-api-key"
+   GEMINI_API_KEY = "your-gemini-api-key"
    ```
 
 4. **Set up database**:
-   Execute the SQL script in [public/db/script.sql](public/db/script.sql)
+   Execute [public/db/script.sql](public/db/script.sql), then apply [public/db/rls_policies.sql](public/db/rls_policies.sql) in the Supabase SQL Editor.
 
 5. **Run the application**:
    ```bash

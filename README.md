@@ -29,7 +29,7 @@ AI Agent to analyze blood reports and provide detailed health insights.
 - **Agent-based architecture**
   - **Analysis Agent**: Report analysis with in-context learning from previous analyses and a built-in knowledge base
   - **Chat Agent**: RAG-powered follow-up Q&A over your report (FAISS + HuggingFace embeddings)
-- **Multi-model cascade** via Groq with automatic fallback (primary → secondary → tertiary → fallback)
+- **Multi-model cascade** via the Gemini API with automatic fallback (primary → secondary → tertiary → fallback)
 - **Chat sessions**: Create multiple analysis sessions; each session stores report, analysis, and follow-up messages in Supabase
 - **Report sources**: Upload your own PDF or use the built-in sample report for quick testing
 - **PDF handling**: Upload up to 20MB, max 50 pages; validation for file type and medical-report content
@@ -42,26 +42,26 @@ AI Agent to analyze blood reports and provide detailed health insights.
 
 - **Frontend**: Streamlit (1.42+)
 - **AI / LLM**
-  - **Report analysis**: Groq with multi-model fallback via `ModelManager`
-    - Primary: `meta-llama/llama-4-maverick-17b-128e-instruct`
-    - Secondary: `llama-3.3-70b-versatile`
-    - Tertiary: `llama-3.1-8b-instant`
-    - Fallback: `llama3-70b-8192`
-  - **Follow-up chat**: RAG with LangChain, HuggingFace embeddings (`all-MiniLM-L6-v2`), FAISS vector store, and Groq (`llama-3.3-70b-versatile`)
+  - **Report analysis**: Gemini API with multi-model fallback via `ModelManager`
+    - Primary: `gemini-3.8-flash`
+    - Secondary: `gemini-3.6-flash`
+    - Tertiary: `gemini-3.5-flash-lite`
+    - Fallback: `gemini-3.1-flash-lite`
+  - **Follow-up chat**: RAG with LangChain, HuggingFace embeddings (`all-MiniLM-L6-v2`), FAISS vector store, and Gemini (`gemini-3.8-flash`)
 - **Database**: Supabase (PostgreSQL)
   - Tables: `users`, `chat_sessions`, `chat_messages`
 - **Auth**: Supabase Auth, Gotrue
 - **PDF**: PDFPlumber (text extraction), filetype (file validation)
-- **Libraries**: LangChain, LangChain Community, LangChain HuggingFace, LangChain Text Splitters, sentence-transformers, FAISS (CPU)
+- **Libraries**: Google Gen AI SDK, LangChain, LangChain Community, LangChain HuggingFace, LangChain Text Splitters, sentence-transformers, FAISS (CPU)
 
 ## 🚀 Installation
 
 #### Requirements 📋
 
-- Python 3.8+
+- Python 3.11+
 - Streamlit 1.42+
 - Supabase account
-- Groq API key
+- Gemini API key (`GEMINI_API_KEY`)
 - PDFPlumber, filetype
 
 #### Getting Started 📝
@@ -84,12 +84,12 @@ pip install -r requirements.txt
 ```toml
 SUPABASE_URL = "your-supabase-url"
 SUPABASE_KEY = "your-supabase-key"
-GROQ_API_KEY = "your-groq-api-key"
+GEMINI_API_KEY = "your-gemini-api-key"
 ```
 
-4. Set up Supabase database schema:
+4. Set up the Supabase database schema and row-level security:
 
-The application uses three tables: `users`, `chat_sessions`, and `chat_messages`. Use the SQL script at `public/db/script.sql` to create them.
+The application uses three tables: `users`, `chat_sessions`, and `chat_messages`. Run `public/db/script.sql` to create the tables, then run `public/db/rls_policies.sql` in the Supabase SQL Editor to allow authenticated users to access only their own profiles, sessions, and messages. For an existing database, run the RLS policy script.
 
 ![database schema](https://raw.githubusercontent.com/harshhh28/hia/main/public/db/schema.png)
 
@@ -115,7 +115,6 @@ hia/
 │   ├── components/
 │   │   ├── analysis_form.py    # Report source (upload/sample), patient form, analysis trigger
 │   │   ├── auth_pages.py       # Login / signup pages
-│   │   ├── footer.py           # Footer component
 │   │   ├── header.py           # User greeting
 │   │   └── sidebar.py          # Session list, new session, daily limit, logout
 │   ├── config/
@@ -127,7 +126,7 @@ hia/
 │   ├── agents/
 │   │   ├── analysis_agent.py   # Report analysis, rate limits, knowledge base, in-context learning
 │   │   ├── chat_agent.py       # RAG pipeline (embeddings, FAISS, query contextualization)
-│   │   └── model_manager.py   # Groq multi-model cascade and fallback
+│   │   └── model_manager.py   # Gemini multi-model cascade and fallback
 │   └── utils/
 │       ├── validators.py       # Email, password, PDF file and content validation
 │       └── pdf_extractor.py   # PDF text extraction and validation
@@ -149,7 +148,7 @@ Thanks to all the amazing contributors who have helped improve this project!
 
 | Avatar | Name | GitHub | Role | Contributions | PR(s) | Notes |
 |--------|------|--------|------|---------------|-------|-------|
-| <img src="https://github.com/harshhh28.png" width="50px" height="50px" alt="harshhh28 avatar"/> | Harsh Gajjar | [harshhh28](https://github.com/harshhh28) | Project Creator & Maintainer | Core implementation, Documentation | N/A | Lead Developer |
+| — | Hemant Singh | — | Project Creator & Maintainer | Core implementation, Documentation | N/A | Lead Developer |
 | <img src="https://github.com/gaurav98095.png" width="50px" height="50px" alt="gaurav98095 avatar"/> | Gaurav | [gaurav98095](https://github.com/gaurav98095) | Contributor | DB Schema, bugs | [#1](https://github.com/harshhh28/hia/pull/1), [#5](https://github.com/harshhh28/hia/pull/5), [#6](https://github.com/harshhh28/hia/pull/6), [#7](https://github.com/harshhh28/hia/pull/7) | Database Design, bugs |
 
 <!-- To future contributors: Your profile will be added here when your PR is merged! -->
@@ -160,4 +159,4 @@ This project is licensed under the MIT License - see the [LICENSE](https://githu
 
 ## 🙋‍♂️ Author
 
-Created by [Harsh Gajjar](https://harshgajjar.vercel.app)
+Created by Hemant Singh

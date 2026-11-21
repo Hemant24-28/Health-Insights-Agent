@@ -127,7 +127,34 @@ class AuthService:
                 # Get user data
                 user_data = self.get_user_data(auth_response.user.id)
                 if not user_data:
-                    return False, "User data not found"
+
+                    user_metadata = getattr(
+                        auth_response.user, "user_metadata", None
+                    ) or {}
+                    if not isinstance(user_metadata, dict):
+                        user_metadata = {}
+
+                    profile = {
+                        "id": auth_response.user.id,
+                        "email": auth_response.user.email or email,
+                        "name": user_metadata.get("name")
+                        or user_metadata.get("full_name")
+                        or "",
+                    }
+                    try:
+                        self.supabase.table("users").upsert(
+                            profile, on_conflict="id"
+                        ).execute()
+                        user_data = self.get_user_data(auth_response.user.id)
+                    except Exception as e:
+                        return False, f"Failed to create user profile: {str(e)}"
+
+                    if not user_data:
+                        return (
+                            False,
+                            "User profile is missing and could not be loaded after "
+                            "synchronizing it with Supabase Auth.",
+                        )
 
                 # Store session info
                 st.session_state.auth_token = auth_response.session.access_token

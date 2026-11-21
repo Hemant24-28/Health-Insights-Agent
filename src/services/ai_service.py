@@ -12,10 +12,10 @@ def init_analysis_state():
         try:
             from agents.chat_agent import ChatAgent
 
-            # Check if GROQ_API_KEY exists before initializing
-            if "GROQ_API_KEY" not in st.secrets:
+            # Check if GEMINI_API_KEY exists before initializing
+            if "GEMINI_API_KEY" not in st.secrets:
                 st.session_state.chat_agent = None
-                st.session_state.chat_agent_error = "GROQ_API_KEY not found in secrets. Please add it to .streamlit/secrets.toml"
+                st.session_state.chat_agent_error = "GEMINI_API_KEY not found in secrets. Please add it to .streamlit/secrets.toml"
             else:
                 st.session_state.chat_agent = ChatAgent()
                 st.session_state.chat_agent_error = None
@@ -67,7 +67,7 @@ def get_chat_response(query, context_text, chat_history):
     if st.session_state.chat_agent is None:
         error_msg = st.session_state.get(
             "chat_agent_error",
-            "Chat functionality is currently unavailable. Please check your GROQ_API_KEY configuration in .streamlit/secrets.toml",
+            "Chat functionality is currently unavailable. Please check your GEMINI_API_KEY configuration in .streamlit/secrets.toml",
         )
         return f"Error: {error_msg}"
 

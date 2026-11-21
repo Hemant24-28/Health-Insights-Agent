@@ -3,7 +3,6 @@ from auth.session_manager import SessionManager
 from components.auth_pages import show_login_page
 from components.sidebar import show_sidebar
 from components.analysis_form import show_analysis_form
-from components.footer import show_footer
 from config.app_config import APP_NAME, APP_TAGLINE, APP_DESCRIPTION, APP_ICON
 from services.ai_service import get_chat_response
 
@@ -52,7 +51,7 @@ def show_welcome_screen():
                 st.session_state.current_session = session
                 st.rerun()
             else:
-                st.error("Failed to create session")
+                st.error(f"Failed to create session: {session}")
 
 
 def show_chat_history():
@@ -139,7 +138,6 @@ def main():
 
     if not SessionManager.is_authenticated():
         show_login_page()
-        show_footer()
         return
 
     # Show user greeting at the top

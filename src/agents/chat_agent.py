@@ -1,10 +1,12 @@
 import streamlit as st
-from groq import Groq
+from google import genai
+from google.genai import types
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
-import os
+import logging
 
+logger = logging.getLogger(__name__)
 
 class ChatAgent:
     def __init__(self):
@@ -12,8 +14,8 @@ class ChatAgent:
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000, chunk_overlap=200
         )
-        self.client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-        self.model_name = "llama-3.3-70b-versatile"
+        self.client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+        self.model_name = "gemini-3.8-flash"
 
     def initialize_vector_store(self, text_content):
         """Create vector store from text content."""
@@ -30,10 +32,17 @@ class ChatAgent:
         return vectorstore
 
     def _format_chat_history(self, chat_history):
-        """Format chat history for Groq API."""
+        """Format chat history for the Gemini API."""
         messages = []
         for msg in chat_history:
-            messages.append({"role": msg["role"], "content": msg["content"]})
+            role = msg.get("role")
+            if role in ("user", "assistant"):
+                messages.append(
+                    {
+                        "role": "model" if role == "assistant" else "user",
+                        "parts": [{"text": msg["content"]}],
+                    }
+                )
         return messages
 
     def _contextualize_query(self, query, chat_history):
@@ -42,7 +51,9 @@ class ChatAgent:
             return query
 
         # Build context from recent chat history
-        recent_history = chat_history[-4:]  # Last 2 exchanges
+        recent_history = [
+            msg for msg in chat_history if msg.get("role") in ("user", "assistant")
+        ][-4:]  # Last 2 exchanges
         history_text = "\n".join(
             [
                 f"{'User' if msg['role'] == 'user' else 'Assistant'}: {msg['content']}"
@@ -60,20 +71,18 @@ Latest User Question: {query}
 Standalone Question:"""
 
         try:
-            response = self.client.chat.completions.create(
+            response = self.client.models.generate_content(
                 model=self.model_name,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You reformulate questions to be standalone.",
-                    },
-                    {"role": "user", "content": contextualize_prompt},
-                ],
-                temperature=0.1,
-                max_tokens=200,
+                contents=contextualize_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction="You reformulate questions to be standalone.",
+                    temperature=0.1,
+                    max_output_tokens=200,
+                ),
             )
-            return response.choices[0].message.content.strip()
-        except Exception:
+            return response.text.strip() if response.text else query
+        except Exception as exc:
+            logger.warning("Gemini query contextualization failed: %s", exc)
             return query  # Fallback to original query
 
     def get_response(self, query, vectorstore, chat_history=None):
@@ -105,15 +114,7 @@ Standalone Question:"""
             "Use three sentences maximum and keep the answer concise."
         )
 
-        # Format messages for Groq API
-        messages = [{"role": "system", "content": qa_system_prompt}]
-
-        # Add chat history
-        if chat_history:
-            formatted_history = self._format_chat_history(
-                chat_history[-6:]
-            )  # Last 3 exchanges
-            messages.extend(formatted_history)
+        messages = self._format_chat_history(chat_history[-6:])
 
         # Add context and current query
         if (
@@ -125,16 +126,21 @@ Standalone Question:"""
         else:
             # No report context available, rely on chat history only
             user_message = f"Question: {query}\n\nNote: No report context is available. Please answer based on the chat history."
-        messages.append({"role": "user", "content": user_message})
+        messages.append({"role": "user", "parts": [{"text": user_message}]})
 
-        # 4. Get response from Groq
+        # 4. Get response from Gemini
         try:
-            response = self.client.chat.completions.create(
+            response = self.client.models.generate_content(
                 model=self.model_name,
-                messages=messages,
-                temperature=0.7,
-                max_tokens=500,
+                contents=messages,
+                config=types.GenerateContentConfig(
+                    system_instruction=qa_system_prompt,
+                    temperature=0.7,
+                    max_output_tokens=500,
+                ),
             )
-            return response.choices[0].message.content
+            if not response.text:
+                return "Error generating response: Gemini returned no text content."
+            return response.text
         except Exception as e:
             return f"Error generating response: {str(e)}"

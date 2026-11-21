@@ -1,8 +1,9 @@
-import groq
 import streamlit as st
 from enum import Enum
 import logging
 import time
+from google import genai
+from google.genai import types
 
 logger = logging.getLogger(__name__)
 
@@ -20,26 +21,26 @@ class ModelManager:
     
     MODEL_CONFIG = {
         ModelTier.PRIMARY: {
-            "provider": "groq",
-            "model": "meta-llama/llama-4-maverick-17b-128e-instruct",
+            "provider": "gemini",
+            "model": "gemini-3.8-flash",
             "max_tokens": 2000,
             "temperature": 0.7
         },
         ModelTier.SECONDARY: {
-            "provider": "groq", 
-            "model": "llama-3.3-70b-versatile",
+            "provider": "gemini",
+            "model": "gemini-3.6-flash",
             "max_tokens": 2000,
             "temperature": 0.7
         },
         ModelTier.TERTIARY: {
-            "provider": "groq",
-            "model": "llama-3.1-8b-instant",
+            "provider": "gemini",
+            "model": "gemini-3.5-flash-lite",
             "max_tokens": 2000, 
             "temperature": 0.7
         },
         ModelTier.FALLBACK: {
-            "provider": "groq",
-            "model": "llama3-70b-8192",
+            "provider": "gemini",
+            "model": "gemini-3.1-flash-lite",
             "max_tokens": 2000,
             "temperature": 0.7
         }
@@ -52,9 +53,9 @@ class ModelManager:
     def _initialize_clients(self):
         """Initialize API clients for each provider."""
         try:
-            self.clients["groq"] = groq.Groq(api_key=st.secrets["GROQ_API_KEY"])
+            self.clients["gemini"] = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
         except Exception as e:
-            logger.error(f"Failed to initialize Groq client: {str(e)}")
+            logger.error(f"Failed to initialize Gemini client: {str(e)}")
 
     def generate_analysis(self, data, system_prompt, retry_count=0):
         """
@@ -87,20 +88,23 @@ class ModelManager:
             client = self.clients[provider]
             logger.info(f"Attempting generation with {provider} model: {model}")
             
-            if provider == "groq":
-                completion = client.chat.completions.create(
+            if provider == "gemini":
+                response = client.models.generate_content(
                     model=model,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": str(data)}
-                    ],
-                    temperature=model_config["temperature"],
-                    max_tokens=model_config["max_tokens"]
+                    contents=str(data),
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_prompt,
+                        temperature=model_config["temperature"],
+                        max_output_tokens=model_config["max_tokens"]
+                    )
                 )
-                
+
+                if not response.text:
+                    raise ValueError(f"Gemini model {model} returned an empty response")
+
                 return {
                     "success": True,
-                    "content": completion.choices[0].message.content,
+                    "content": response.text,
                     "model_used": f"{provider}/{model}"
                 }
                 
